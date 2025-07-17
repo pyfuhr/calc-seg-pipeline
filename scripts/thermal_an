@@ -1,0 +1,22 @@
+units metal
+atom_style atomic
+dimension 3
+boundary p p p
+
+# Define atom coordinates
+read_data <path_to_atoms>
+
+pair_style eam/fs
+pair_coeff * * <path_to_potential> <specs>
+
+fix 1 all npt temp <init_temp> <start_temp> $(100.0*dt) iso 0 0 $(1000.0*dt)
+run <heat_time>
+fix 1 all npt temp <start_temp>  <stop_temp> $(100.0*dt) iso 0 0 $(1000.0*dt)
+run <ann_time>
+fix 1 all npt temp <stop_temp> <end_temp> $(100.0*dt) iso 0 0 $(1000.0*dt)
+run <cool_time>
+
+write_data <path_to_res>
+
+# mpiexec --np 6 $lmp -i thermal_an
+# mpiexec --np 2 $lmp -i project/ag15nm/thermal_an
