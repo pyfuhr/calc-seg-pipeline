@@ -1,3 +1,6 @@
 .venv
 project
 bin
+*.lst
+tmp*
+log*

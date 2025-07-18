@@ -1,21 +1,25 @@
-#add inpurity and calculate energy
+#add impurity and calculate energy
 debug = print
 
 from subprocess import Popen, PIPE
-import os, glob
-from ase import Atoms
+import os, multiprocessing
 import ase.io
 import ovito as ov
 import numpy as np
 from dscribe.descriptors.soap import SOAP
 from tqdm import tqdm
+import time
 
-projname = 'ag15nm'
+projname = 'ag10nm'
+print(f'Using proj "{projname}"')
 if not os.path.isdir(f'project/{projname}'):
     print('WARNING: proj doesnt exsist.')
+    exit()
 else:
     if not input("Use this project (Yes/No(any))? ").lower().startswith('y'):
         exit()
+
+q = multiprocessing.Queue()
 
 def get_gb_ids_and_indices(polycrystal):
     node = ov.io.import_file(f'project/{projname}/{polycrystal}')
@@ -49,36 +53,55 @@ def get_gb_ids_and_indices(polycrystal):
             gb_atoms_indices.append(index)
     return np.array(gb_atoms_ids), np.array(gb_atoms_indices)
 
-def add_inpurity(infile, atom_id, inpuriy_atnum, outfile):
+def add_impurity(infile, atom_id, impuriy_atnum, outfile):
     atoms = ase.io.read(f'project/{projname}/{infile}')
     atnums = atoms.get_atomic_numbers()
-    atnums[atom_id] = inpuriy_atnum
+    atnums[atom_id] = impuriy_atnum
     atoms.set_atomic_numbers(atnums)
-    atoms.write(f'project/{projname}/{outfile}')
+    atoms.write(f'project/{projname}/{outfile}', format='lammps-data')
 
-def get_soap_system(infile, soap_cutoff, n_max, l_max, atomic_number, atom_sigma=1):
-    #system = ase.io.read(converted_dump_file, format=converted_format)
-    pipeline = ov.io.import_file(infile)
+def start_subcalc(id, system, cores, species, soap_cutoff, n_max, l_max, sigma, cnt:multiprocessing.Value) -> None:
+    soap = SOAP(
+        species=species,
+        periodic=True,
+        r_cut=soap_cutoff,
+        n_max=n_max,
+        l_max=l_max,
+        sigma=sigma
+    )
+    global q
+    if id==0:
+        for i in tqdm(range(id, len(system), cores)):
+            q.put((i, soap.create(system, centers=[i, ])[0]))
+    else:
+        for i in range(id, len(system), cores):
+            q.put((i, soap.create(system, centers=[i, ])[0]))
+    cnt.value -= 1
+
+def get_soap_system(infile, soap_cutoff, n_max, l_max, atomic_number, atom_sigma=1, cores=4):
+    pipeline = ov.io.import_file(f'project/{projname}/{infile}')
     data = pipeline.compute()
     system = ov.io.ase.ovito_to_ase(data)
     system.set_pbc([1,1,1])
     system.set_atomic_numbers(np.ones(len(system))*int(atomic_number))
     species = [atomic_number]
-    #===============================
-    #desc = SOAP("soap cutoff=%.2f l_max=%i n_max=%i atom_sigma=%.2f n_Z=1 Z={%i} normalise=F"%(soap_cutoff, l_max, n_max, atom_sigma, atomic_number))
-    soap = SOAP(
-    species=species,
-    periodic=True,
-    r_cut=soap_cutoff,
-    n_max=n_max,
-    l_max=l_max,
-    sigma=atom_sigma
-)
-    #===============================
-    #soap_arr = desc.calc_descriptor(system)
-    soap_arr = []
-    for i in tqdm(range(len(system))):
-        soap_arr.append(soap.create(system, centers=[i, ])[0])
-    return soap_arr
+    procs = []
+    global q
+    cnt = multiprocessing.Value('d', 0)
+    for i in range(cores):
+        p = multiprocessing.Process(target=start_subcalc, args=(i, system, 
+        cores, species, soap_cutoff, n_max, l_max, atom_sigma, cnt))
+        p.start()
+        procs.append(p)
+        cnt.value += 1
+    
+    while cnt.value > 0:
+        print('\r', cnt.value, end='\r')
+        
+    with open(f'soap.lst', 'w') as f:
+        while not q.empty():
+            print('Entry left:', q.qsize, end='\r')
+            row = q.get()
+            f.write(f'{row[0]} {" ".join(map(str, row[1]))}\n')
 
-print(get_gb_ids_and_indices('result_min'))
+print(get_soap_system('Ag_15nm_minimized.cfg', 6, 12, 12, 47, cores=54))

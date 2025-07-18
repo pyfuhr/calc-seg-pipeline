@@ -5,8 +5,10 @@ from subprocess import Popen, PIPE
 import os, glob, shutil
 
 projname = 'ag10nm'
+print(f'Using proj "{projname}"')
 if not os.path.isdir(f'project/{projname}'):
     print('WARNING: proj doesnt exsist.')
+    exit()
 else:
     if not input("Use this project (Yes/No(any))? ").lower().startswith('y'):
         exit()
@@ -17,11 +19,13 @@ def minimize_polycrystal(path_file_to_min:str, path_potential:str, specs:list[st
             src = fr.read()
             src = src.replace('<path_to_atoms>', f'project/{projname}/{path_file_to_min}')
             src = src.replace('<path_to_potential>', f'potentials/{path_potential}')
+            src = src.replace('<path_to_dump>', f'project/{projname}/dump')
             src = src.replace('<specs>', f'{" ".join(specs)}')
             src = src.replace('<path_to_res>', f'project/{projname}/{path_to_out}')
             fw.write(src)
     p = Popen(["mpiexec", "--np", f"{cores}", "bin/lammps/bin/lmp", "-i", f"project/{projname}/minimizelmp"])
     o, e = p.communicate()
+    return f"project/{projname}/minimizelmp"
 
 def thermal_annealing(path_file_to_ann:str, path_potential:str, specs:list[str], path_to_out:str,
                       init_temp, start_temp, stop_temp, end_temp, heat_time, ann_time, cool_time, cores:int=4):
@@ -44,6 +48,9 @@ def thermal_annealing(path_file_to_ann:str, path_potential:str, specs:list[str],
             fw.write(src)
     p = Popen(["mpiexec", "--np", f"{cores}", "bin/lammps/bin/lmp", "-i", f"project/{projname}/thermal_an"])
     o, e = p.communicate()
+    return f"project/{projname}/thermal_an"
 
-#minimize_polycrystal('result.lmp', 'Ag-Ni.eam.fs', ['Ag'], 'result_min')
-thermal_annealing('result_min', 'Ag-Ni.eam.fs', ['Ag'], 'result_ann', 0.1, 700, 700, 0.1, 20, 300, 30, cores=54)
+s1 = minimize_polycrystal('result.lmp', 'Ag-Ni.eam.fs', ['Ag'], 'result_min')
+print(s1)
+#s2 = thermal_annealing('result_min', 'Ag-Ni.eam.fs', ['Ag'], 'result_ann', 0.1, 700, 700, 0.1, 100000, 1000000, 100000, cores=27)
+#print(s2)

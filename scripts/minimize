@@ -16,10 +16,17 @@ mass 1 108
 pair_style eam/fs
 pair_coeff * * <path_to_potential> <specs>
 
+compute pot_energy all pe
+thermo_style custom temp pe
 # Define minimization parameters
 min_style cg
+
 minimize 1.0e-7 1.0e-7 1000 1000
 
 # Run the simulation
 run 0
+fix 1 all box/relax iso 1000 vmax 0.01
+minimize 1.0e-7 1.0e-7 1000 1000
+run 0
+
 write_data <path_to_res>
