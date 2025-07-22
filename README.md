@@ -1,4 +1,4 @@
-# usage
+# Usage
 Edit yaml in project root directory <br>
 Examlpe yaml file with list commands
 
@@ -27,6 +27,7 @@ pipeline:
         cool_time: 1e6
         outfile: "Ag_10nm_reord_relax.lmp"
 
+not_all_command_under_implemented_now
 pipeline_commands:
     - create_monocrystal
     - create_polycrystal
