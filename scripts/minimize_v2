@@ -6,17 +6,17 @@ boundary p p p
 newton on
 
 # Define atom coordinates
-read_data <path_to_atoms>
-<mass>
+read_data $infile
+$masses
 
 # Define potential and atom types
 #    params = {'pair_style': 'eam/fs',
 #   'pair_coeff': ['* * Ag-Ni.eam.fs Ag'], }#'tmp_dir': 'lmptd', 'keep_tmp_files': True}
 #   'pair_coeff': ['* * Ag-Ni.eam.fs Ag Ni'], }
-pair_style eam/fs
-pair_coeff * * <path_to_potential> <specs>
+pair_style $potential_type
+pair_coeff * * $potential_file $atom_specs
 
-fix extra all print 1 "pe = $(pe)" file out.lmp
+fix extra all print 1 "pe = $(pe)" file $energy_outfile
 
 compute pot_energy all pe
 compute temp1 all temp
@@ -39,4 +39,4 @@ compute pot_energy3 all pe
 compute temp3 all temp
 thermo_style custom temp pe
 
-write_data <path_to_res>
+write_data $outfile

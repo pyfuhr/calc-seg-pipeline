@@ -2,5 +2,7 @@
 project
 bin
 *.lst
-tmp*
+tmp*git
 log*
+stp52*
+**/__pycache__

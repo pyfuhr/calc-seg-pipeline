@@ -8,15 +8,33 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import pickle as pkl
+from stp3 import get_gb_ids_and_indices
 
-projname = 'ag10nm'
-print(f'Using proj "{projname}"')
-if not os.path.isdir(f'project/{projname}'):
-    print('WARNING: proj doesnt exsist.')
-    exit()
-else:
-    if not input("Use this project (Yes/No(any))? ").lower().startswith('y'):
-        exit()
+def select_points(inname, insoap, outlist, id_or_ind=False):
+    id, ind = get_gb_ids_and_indices(inname)
+    if id_or_ind:
+        use_id = id
+    else:
+        use_id = ind
+    #soap_vectors = np.load('soap.lst')
+    #xy_left = pd.DataFrame(soap_vectors)
+    xy = pd.read_csv(f'project/{projname}/{insoap}', sep=' ', header=None)
+    xy = xy.set_index(0)
+    xy.sort_index(inplace=True)
+    pca_x = PCA(n_components=10, svd_solver="full")
+    xpca_all = pca_x.fit_transform(xy.iloc[:, 1:].values)
+    xpca_all = pd.DataFrame(xpca_all)
+    xpca_all['id'] = xy.index
+    xpca_gb = xpca_all.iloc[use_id, :]
+    kmeans = KMeans(n_clusters=200, random_state=123)
+    kmeans.fit(xpca_gb.iloc[:, :-1])
+
+    from sklearn.metrics import pairwise_distances_argmin_min
+    best_lae_indices, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, xpca_gb.iloc[:, :-1])
+
+    with open(f'project/{projname}/{outlist}', 'w') as f:
+        for i in best_lae_indices:
+            f.write(f'{xpca_gb['id'].values[i]}\n')
 
 def train_lr(soap_vectors:np.array, energy_spectra, n_pca=10, points=100):
     assert points > len(energy_spectra), "Point more then energies"

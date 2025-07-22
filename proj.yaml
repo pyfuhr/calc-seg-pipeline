@@ -1,0 +1,109 @@
+projname: "ag10nm"
+specs: ["Ag", "Ni"]
+---masses: [108, 59]
+cores: 54
+pipeline_example: # запускается pipeline
+    #step 1: create polycrystal
+    create_monocrystal: # Только кубические TODO ГПУ и тетрагональные
+        type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
+        a: 4.08 # Размер решетки
+        c: 0 # для дальнейшей генерации тетрагональных и гексагональных решеток
+        atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
+        outname: "fcc.xsf"
+    create_polycrystal:
+        x: 100 # angstrem
+        y: 100 # TODO now only cubic
+        z: 100 # TODO
+        grain_num: 10 # Как много зерен
+        stamp_file: "fcc.xsf"
+        outfile: "Ag_10nm.lmp" # to avoid errors use inside pipeline ordered lammps data file
+    #step 2: minimize and relax polycrystal
+    reorder_index:
+        infile: "Ag_10nm.lmp"
+        outfile: "Ag_10nm_reord.lmp"
+    convert_format: #TODO atomask or ase or ovito
+        infile: "Ag_10nm_reord.lmp"
+        informat: "lammps/data"
+        outfile: "Ag_10nm_reord.xyz"
+        outformat: "xyz"
+    minimize_polycrystal:
+        infile: "Ag_10nm_reord.lmp"
+        potential_type: "eam/fs"
+        potetntial: "Ag-Ni.eam.fs" # TODO add potential type
+        atom_types: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        ---masses: [108] # only None or list of int (masses, not index)
+        outfile: "Ag_10nm_reord_min.lmp"
+        energy_file: "pureE" # path to file, if none file doesnt create
+    relax_polycrystal:
+        infile: "Ag_10nm_reord.lmp"
+        potential_type: "eam/fs"
+        potetntial: "Ag-Ni.eam.fs" # TODO add potential type
+        atom_types: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        ---masses: [108] # only None or list of int (masses, not index)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 1e5
+        ann_time: 1e6
+        cool_time: 1e6
+        outfile: "Ag_10nm_reord_relax.lmp"
+    # step 3: calculate X data for training (gb_ids, soap_vector)
+    get_gb_ids:
+        infile: "Ag_10nm_reord_relax.lmp"
+        cutoff: 3.5 # TODO
+        outfile: "GBs.lst" # TODO, indexes of GB atom, 
+    soap:
+        infile: "Ag_10nm_reord_relax.lmp"
+        soap_cutoff: 6.0
+        n_max: 12
+        l_max: 12
+        atomic_numbers: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        atom_sigma: 1
+        outfile: "soap.lst" # TODO
+    extract_pca:
+        infile: "soap.lst"
+        pca_num: 10
+        outfile: "pca.lst"
+        dispersion_file: False # create file with dispersion by component
+    select_points:
+        infile: "pca.lst"
+        gb_file: "GBs.lst"
+        points_num: 200
+        outfile: "GBs_best.lst"
+    # step 4: calculate Y data: spectra of segregation energy
+    add_inpurity:
+        infile: "Ag_10nm_reord_relax.lmp"
+        imp_id: 0
+        ---atomic_numbers: False # TODO use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        outfile: "Ag_10nm_reord_relax_imp.lmp"
+    replace_and_minimize:
+        infile: "Ag_10nm_reord_relax.lmp"
+        imp_id: 0
+        ---atomic_numbers: False
+    calculate_spectra:
+        infile: "Ag_10nm_reord_relax.lmp"
+        gb_file: "GBs_best.lst"
+        ---atomic_numbers: False
+        base_energy: "pureE"
+        outfile: "Eseg_best_calc"
+    # step 5: train model
+    train_lr:
+        x_file: "pca.lst"
+        y_file: "Eseg_best"
+        gb_file: "GBs_best"
+        outfile: "AgNi-nn.pkl"
+        metrics: ["MAE"]
+    predict_lr:
+        infile: "pca.lst"
+        model_file: "AgNi-nn.pkl"
+        outfile: "Eseg_pred"
+        metrics: ["MAE"]
+
+
+
+name:
+    - 1
+    - 2
+
+name2: {"test": 1, "w": 2}

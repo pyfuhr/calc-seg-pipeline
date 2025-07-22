@@ -1,25 +1,16 @@
 #add impurity and calculate energy
 debug = print
 
-from subprocess import Popen, PIPE
 import os, multiprocessing
 import ase.io
 import ovito as ov
 import numpy as np
 from dscribe.descriptors.soap import SOAP
 from tqdm import tqdm
-import time
-
-projname = 'ag10nm'
-print(f'Using proj "{projname}"')
-if not os.path.isdir(f'project/{projname}'):
-    print('WARNING: proj doesnt exsist.')
-    exit()
-else:
-    if not input("Use this project (Yes/No(any))? ").lower().startswith('y'):
-        exit()
+from stp2 import reorder_crystal
 
 q = multiprocessing.Queue()
+projname = 'ag10nm'
 
 def get_gb_ids_and_indices(polycrystal):
     node = ov.io.import_file(f'project/{projname}/{polycrystal}')
@@ -40,25 +31,15 @@ def get_gb_ids_and_indices(polycrystal):
     node.modifiers.append(ov.modifiers.ExpressionSelectionModifier(expression="StructureType != %i"%(1)))
     data = node.compute()
     select = data.particles['Selection']
-    pid = data.particles['Particle Identifier']
-    nparticles = len(pid.array)
-    gb_atoms_ids = []
+    nparticles = len(select.array)
     gb_atoms_indices = []
 
     print(np.sum(select.array==1))
     print(nparticles)
     for index in range(nparticles):
         if int(select.array[index]) == int(1):
-            gb_atoms_ids.append(pid.array[index])
             gb_atoms_indices.append(index)
-    return np.array(gb_atoms_ids), np.array(gb_atoms_indices)
-
-def add_impurity(infile, atom_id, impuriy_atnum, outfile):
-    atoms = ase.io.read(f'project/{projname}/{infile}')
-    atnums = atoms.get_atomic_numbers()
-    atnums[atom_id] = impuriy_atnum
-    atoms.set_atomic_numbers(atnums)
-    atoms.write(f'project/{projname}/{outfile}', format='lammps-data')
+    return np.array(gb_atoms_indices)
 
 def start_subcalc(id, system, cores, species, soap_cutoff, n_max, l_max, sigma, cnt:multiprocessing.Value) -> None:
     soap = SOAP(
@@ -98,10 +79,10 @@ def get_soap_system(infile, soap_cutoff, n_max, l_max, atomic_number, atom_sigma
     while cnt.value > 0:
         print('\r', cnt.value, end='\r')
         
-    with open(f'soap.lst', 'w') as f:
+    with open(f'project/{projname}/soap.lst', 'w') as f:
         while not q.empty():
-            print('Entry left:', q.qsize, end='\r')
+            print('Entry left:', q.qsize(), end='\r')
             row = q.get()
             f.write(f'{row[0]} {" ".join(map(str, row[1]))}\n')
 
-print(get_soap_system('Ag_15nm_minimized.cfg', 6, 12, 12, 47, cores=54))
+#print(get_soap_system('Ag_15nm_minimized.cfg', 6, 12, 12, 47, cores=54))

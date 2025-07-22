@@ -2,18 +2,22 @@
 debug = print
 
 from subprocess import Popen, PIPE
-import os, glob, shutil
+import os
+import ovito as ov
+import ovito.io
 
 projname = 'ag10nm'
 print(f'Using proj "{projname}"')
 if not os.path.isdir(f'project/{projname}'):
     print('WARNING: proj doesnt exsist.')
     exit()
-else:
-    if not input("Use this project (Yes/No(any))? ").lower().startswith('y'):
-        exit()
 
-def minimize_polycrystal(path_file_to_min:str, path_potential:str, specs:list[str], path_to_out:str, cores:int=4):
+def reorder_crystal(infile, outfile):
+    system = ovito.io.import_file(f"project/{projname}/{infile}", sort_particles=True)
+    ovito.io.export_file(system, f"project/{projname}/{outfile}", "lammps/data")
+
+def minimize_polycrystal(path_file_to_min:str, path_potential:str, specs:list[str], path_to_out:str, 
+                         masses:list[int]=[108, 59], cores:int=4):
     with open('scripts/minimize', 'r') as fr:
         with open(f'project/{projname}/minimizelmp', 'w') as fw:
             src = fr.read()
@@ -22,10 +26,13 @@ def minimize_polycrystal(path_file_to_min:str, path_potential:str, specs:list[st
             src = src.replace('<path_to_dump>', f'project/{projname}/dump')
             src = src.replace('<specs>', f'{" ".join(specs)}')
             src = src.replace('<path_to_res>', f'project/{projname}/{path_to_out}')
+            src = src.replace('<mass>', f'{"\n".join([f"mass {i+1} {mass}" for i, mass in enumerate(masses)])}')
             fw.write(src)
     p = Popen(["mpiexec", "--np", f"{cores}", "bin/lammps/bin/lmp", "-i", f"project/{projname}/minimizelmp"])
     o, e = p.communicate()
-    return f"project/{projname}/minimizelmp"
+    with open('out.lmp', 'r') as f:
+        energy = float(f.read().split('\n')[-2].split(' = ')[-1])
+    return energy
 
 def thermal_annealing(path_file_to_ann:str, path_potential:str, specs:list[str], path_to_out:str,
                       init_temp, start_temp, stop_temp, end_temp, heat_time, ann_time, cool_time, cores:int=4):
@@ -49,8 +56,3 @@ def thermal_annealing(path_file_to_ann:str, path_potential:str, specs:list[str],
     p = Popen(["mpiexec", "--np", f"{cores}", "bin/lammps/bin/lmp", "-i", f"project/{projname}/thermal_an"])
     o, e = p.communicate()
     return f"project/{projname}/thermal_an"
-
-s1 = minimize_polycrystal('result.lmp', 'Ag-Ni.eam.fs', ['Ag'], 'result_min')
-print(s1)
-#s2 = thermal_annealing('result_min', 'Ag-Ni.eam.fs', ['Ag'], 'result_ann', 0.1, 700, 700, 0.1, 100000, 1000000, 100000, cores=27)
-#print(s2)
