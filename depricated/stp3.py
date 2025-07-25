@@ -9,8 +9,7 @@ from dscribe.descriptors.soap import SOAP
 from tqdm import tqdm
 from stp2 import reorder_crystal
 
-q = multiprocessing.Queue()
-projname = 'ag10nm'
+projname = 'test'
 
 def get_gb_ids_and_indices(polycrystal):
     node = ov.io.import_file(f'project/{projname}/{polycrystal}')

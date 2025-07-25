@@ -56,19 +56,21 @@ pipeline_example: # запускается pipeline
         relax_time: 1e6
         cool_time: 1e6
         outfile: "Ag_10nm_reord_relax.lmp"
+        cores: False
     # step 3: calculate X data for training (gb_ids, soap_vector)
     get_gb_ids:
         infile: "Ag_10nm_reord_relax.lmp"
-        cutoff: 3.5 # TODO
-        outfile: "GBs.lst" # TODO, indexes of GB atom, 
+        cutoff: 3.5
+        outfile: "GBs.lst" # only row index
     soap:
         infile: "Ag_10nm_reord_relax.lmp"
         soap_cutoff: 6.0
         n_max: 12
         l_max: 12
-        atomic_numbers: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
-        atom_sigma: 1
+        sigma: 1
+        atomtypes: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
         outfile: "soap.lst" # TODO
+        cores: False
     extract_pca:
         infile: "soap.lst"
         pca_num: 10
@@ -79,21 +81,31 @@ pipeline_example: # запускается pipeline
         gb_file: "GBs.lst"
         points_num: 200
         outfile: "GBs_best.lst"
+        random_state: 42
     # step 4: calculate Y data: spectra of segregation energy
-    add_inpurity:
+    add_impurity:
         infile: "Ag_10nm_reord_relax.lmp"
         imp_id: 0
-        ---atomic_numbers: False # TODO use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        atomtypes: False # TODO use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
         outfile: "Ag_10nm_reord_relax_imp.lmp"
     replace_and_minimize:
         infile: "Ag_10nm_reord_relax.lmp"
         imp_id: 0
-        ---atomic_numbers: False
+        minimize_func: "minimize_polycrystal"
+        potetntial: "Ag-Ni.eam.fs"
+        minimize-args:
+            potential_type: "eam/fs"
+        atomtypes: False
+        energy_file: "pureE"
     calculate_spectra:
         infile: "Ag_10nm_reord_relax.lmp"
         gb_file: "GBs_best.lst"
-        ---atomic_numbers: False
+        atomtypes: False
         base_energy: "pureE"
+        minimize_func: "minimize_polycrystal"
+        potetntial: "Ag-Ni.eam.fs"
+        minimize-args:
+            potential_type: "eam/fs"
         outfile: "Eseg_best_calc"
     # step 5: train model
     train_lr:

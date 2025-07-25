@@ -80,4 +80,4 @@ def predict_lr(d, infile, gb_file, model_file, outfile, metrics=None, learn_file
 
 
 #train_lr({'projname': 'test'}, 'pca.lst', 'Eseg_best_calc.txt', None, 'AgNi-nn.pkl')
-predict_lr({'projname': 'test'}, 'pca.lst', 'GBs.lst', 'AgNi-nn.pkl', 'Eseg_pred', None)
+#predict_lr({'projname': 'test'}, 'pca.lst', 'GBs.lst', 'AgNi-nn.pkl', 'Eseg_pred', None)

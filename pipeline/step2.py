@@ -19,7 +19,7 @@ def convert_format2(d, infile, outfile):
     o, e = p.communicate()
     p.returncode
 
-def minimize_polycrystal(d, infile, protential_type, potential, atomtypes, outfile, energy_file):
+def minimize_polycrystal(d, infile, protential_type, potential, atomtypes, outfile, energy_file, cores=False):
     with open('scripts/minimize_v2', 'r') as fr:
         with open(f'project/{d['projname']}/minimizelmp', 'w') as fw:
             src = string.Template(fr.read())
@@ -31,14 +31,14 @@ def minimize_polycrystal(d, infile, protential_type, potential, atomtypes, outfi
             dfile['energy_outfile'] = f'project/{d['projname']}/{energy_file}'
             dfile['outfile'] = f'project/{d['projname']}/{outfile}'
             fw.write(src.safe_substitute(dfile))
-    p = Popen(["mpiexec", "--np", f"{d['cores']}", "bin/lammps/bin/lmp", "-i", f"project/{d['projname']}/minimizelmp"])
+    p = Popen(["mpiexec", "--np", f"{cores if cores else d['cores']}", "bin/lammps/bin/lmp", "-i", f"project/{d['projname']}/minimizelmp"])
     o, e = p.communicate()
     with open(f"project/{d['projname']}/{energy_file}", 'r') as f:
         energy = float(f.read().split('\n')[-2].split(' = ')[-1])
     return energy
 
 def relax_polycrystal(d, infile, protential_type, potential, atomtypes, init_temp, start_temp, stop_temp, 
-                      end_temp, heat_time, relax_time, cool_time, outfile):
+                      end_temp, heat_time, relax_time, cool_time, outfile, cores):
     with open('scripts/thermal_an_v2', 'r') as fr:
         with open(f'project/{d['projname']}/thermal_an', 'w') as fw:
             src = string.Template(fr.read())
@@ -56,5 +56,5 @@ def relax_polycrystal(d, infile, protential_type, potential, atomtypes, init_tem
             dfile['cool_time'] = str(cool_time)
             dfile['outfile'] = f'project/{d['projname']}/{outfile}'
             fw.write(src.safe_substitute(dfile))
-    p = Popen(["mpiexec", "--np", f"{d['cores']}", "bin/lammps/bin/lmp", "-i", f"project/{d['projname']}/thermal_an"])
+    p = Popen(["mpiexec", "--np", f"{cores if cores else d['cores']}", "bin/lammps/bin/lmp", "-i", f"project/{d['projname']}/thermal_an"])
     o, e = p.communicate()

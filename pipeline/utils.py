@@ -16,3 +16,12 @@ def get_masses_from_specs(specs):
     for i in specs:
         ret.append(float(df[df['Symbol']==i]['AtomicMass'].iloc[0]))
     return ret
+
+def get_atomicnum_from_specs(specs):
+    df = pd.read_csv('elements.csv')
+    if isinstance(specs, str):
+        specs = [specs, ]
+    ret = []
+    for i in specs:
+        ret.append(int(df[df['Symbol']==i]['AtomicNumber'].iloc[0]))
+    return ret
