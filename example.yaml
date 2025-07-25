@@ -3,18 +3,32 @@ specs: ["Ag", "Ni"]
 cores: 54
 
 pipeline:
+    create_monocrystal: # https://atomsk.univ-lille.fr/doc/en/mode_create.html
+        type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
+        a: 4.08 # Размер решетки
+        c: 0 # для генерации тетрагональных и гексагональных решеток
+        atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
+        outfile: "fcc.xsf"
+    create_polycrystal:
+        x: 100 # angstrem
+        y: 100
+        z: 100
+        grain_num: 10 # Как много зерен
+        stamp_file: "fcc.xsf"
+        outfile: "Ag_10nm.lmp"
     relax_polygpu:
-        infile: "result_min"
-        potential: "Unep_v1.txt" 
+        infile: "Ag_10nm.lmp"
+        potential: "UNEP_v1.txt" 
         atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
         init_temp: 0.1
         start_temp: 700
         stop_temp: 700
         end_temp: 0.1
-        heat_time: 1e6
-        relax_time: 1e7
-        cool_time: 1e6
-        outfile: "Ag_10nm_reord_relax.lmp"
+        heat_time: 1000000
+        relax_time: 10000000
+        cool_time: 1000000
+        elastic_mod: 83
+        outfile: "Ag_10nm_gpurelax.lmp"
 
 pipeline_example: # запускается pipeline
     #step 1: create polycrystal
@@ -23,7 +37,7 @@ pipeline_example: # запускается pipeline
         a: 4.08 # Размер решетки
         c: 0 # для генерации тетрагональных и гексагональных решеток
         atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
-        outname: "fcc.xsf"
+        outfile: "fcc.xsf"
     create_polycrystal:
         x: 100 # angstrem
         y: 100

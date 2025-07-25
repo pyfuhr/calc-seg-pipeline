@@ -1,18 +1,18 @@
 potential $potential
-velocity 0
+velocity 0.00001
 time_step 1
 
-ensemble    npt_ber $init_temp $start_temp 100 0 0 1000
+ensemble    npt_ber $init_temp $start_temp 100 0 $elastic_mod 1000
 dump_exyz   $heat_time 0 0
-dump_thermo 100
+dump_thermo 10000
 run         $heat_time
 
-ensemble    npt_ber $start_temp $stop_temp 100 0 0 1000
-dump_exyz   $ann_time 0 0
-dump_thermo 100
-run         $ann_time
+ensemble    npt_ber $start_temp $stop_temp 100 0 $elastic_mod 1000
+dump_exyz   $relax_time 0 0
+dump_thermo 10000
+run         $relax_time
 
-ensemble    npt_ber $stop_temp $end_temp 100 0 0 1000
+ensemble    npt_ber $stop_temp $end_temp 100 0 $elastic_mod 1000
 dump_exyz   $cool_time 0 0
-dump_thermo 100
+dump_thermo 10000
 run         $cool_time

@@ -22,7 +22,7 @@ def create_monocrystal(d, type, a, atomtypes, outfile, c=0): # TODO add nanotube
     if len(atomtypes) not in atomtypes_num: raise Exception(f'cant create {type} with this specs:{atomtypes}')
     if os.path.isfile(f'project/{d["projname"]}/{outfile}'):
         os.remove(f'project/{d["projname"]}/{outfile}')
-    cmd = ['bin/atomsk/atomsk', '--create', type]
+    cmd = ['atomsk', '--create', type]
     cmd.append(str(a))
     if c: cmd.append(str(c))
     cmd.extend(atomtypes)
@@ -38,8 +38,8 @@ def create_polycrystal(d, x, y, z, grain_num, stamp_file, outfile):
     # atomsk --polycrystal fcc_unitcell.xsf voronoi_random.txt fcc_polycrystal.cfg lmp
     suffixes = ['_grains-com.xsf', '_id-size.txt', '_nodes.xsf', '_param.txt', '_size-dist.txt', '.'+outfile.rsplit('.', 1)[1]]
     for suffix in suffixes:
-        if os.path.isfile(f'project/{d["projname"]}/{outfile.rsplit('.', 1)[0]+suffix}'):
-            os.remove(f'project/{d["projname"]}/{outfile.rsplit('.', 1)[0]+suffix}')
+        if os.path.isfile(f"project/{d['projname']}/{outfile.rsplit('.', 1)[0]+suffix}"):
+            os.remove(f'project/{d["projname"]}/{outfile.rsplit(".", 1)[0]+suffix}')
     cmd = ['atomsk', '--polycrystal']
     cmd.extend([f'project/{d["projname"]}/{stamp_file}', f'project/{d["projname"]}/polycrystal_param.txt'])
     cmd.append(f'project/{d["projname"]}/{outfile}')

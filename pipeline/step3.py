@@ -53,7 +53,7 @@ def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=
     while cnt.value > 0:
         sleep(1)
         
-    with open(f'project/{d['projname']}/{outfile}', 'w') as f:
+    with open(f"project/{d['projname']}/{outfile}", 'w') as f:
         while not q_step3 .empty():
             print('Entry left:', q_step3.qsize(), end='\r')
             row = q_step3 .get()
@@ -100,7 +100,7 @@ def select_points(d, infile, gb_file, points_num, outfile, random_state=42):
 
     with open(f"project/{d['projname']}/{outfile}", 'w') as f:
         for i in best_lae_indices:
-            f.write(f'{xpca_gb['idc'].values[i]}\n')
+            f.write(f"{xpca_gb['idc'].values[i]}\n")
 
 #extract_pca({'projname': 'test'}, 'soap.lst', 10, 'pca.lst')
 #get_gb_ids({'projname': 'test'}, 'Ag_15nm_minimized.cfg', 3.5, 'lower.lst')
