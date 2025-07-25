@@ -2,7 +2,7 @@ import ovito.io
 from subprocess import Popen, PIPE
 import ase.io
 import string
-from utils import get_masses_from_specs
+from pipeline.utils import get_masses_from_specs
 
 def reorder_index(d, infile, outfile):
     system = ovito.io.import_file(f"project/{d['projname']}/{infile}", sort_particles=True)

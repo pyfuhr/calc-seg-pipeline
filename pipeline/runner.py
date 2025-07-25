@@ -1,14 +1,9 @@
-from step1 import create_monocrystal, create_polycrystal
-from step2 import reorder_index, convert_format, convert_format2, minimize_polycrystal, relax_polycrystal
-from step3 import get_gb_ids, select_points, soap, extract_pca
-from step4 import add_impurity, replace_and_minimize, calculate_spectra
-from step5 import train_lr, predict_lr
-
-import argparse
-parser = argparse.ArgumentParser(
-                    prog='Segregation Pipeline',
-                    description='What the program does',
-                    epilog='Text at the bottom of help')
+from pipeline.step1 import create_monocrystal, create_polycrystal
+from pipeline.step2 import reorder_index, convert_format, convert_format2, minimize_polycrystal, relax_polycrystal
+from pipeline.step3 import get_gb_ids, select_points, soap, extract_pca
+from pipeline.step4 import add_impurity, replace_and_minimize, calculate_spectra
+from pipeline.step5 import train_lr, predict_lr
+from pipeline.step2_gpumd import relax_polycrystal as relax_polygpu
 
 d_global = globals().copy()
 for i in list(d_global.keys()):
@@ -16,9 +11,6 @@ for i in list(d_global.keys()):
         del d_global[i]
 
 import yaml
-
-with open('test.yaml', 'r') as f:
-    d = yaml.safe_load(f)
 
 def run(d):
     global d_global
@@ -113,10 +105,11 @@ def run(d):
             case 'predict_lr':
                 args = d_args.copy()
                 predict_lr(d, **args)
+            case 'relax_polygpu':
+                args = d_args.copy()
+                relax_polygpu(d, **args)
             case _:
                 print(-1)
-        if args.get('outfile', False):
-            with open(f'project/{d["projname"]}/{args["outfile"]}.meta', 'w') as f:
-                yaml.dump(args+d["specs"], f)
-
-run(d)
+        '''if args.get('outfile', False):
+            with open(f'project/{d["projname"]}/{args["outfile"]}.meta', 'w+') as f:
+                yaml.dump(args+d["specs"], f)'''

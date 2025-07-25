@@ -3,24 +3,31 @@ specs: ["Ag", "Ni"]
 cores: 54
 
 pipeline:
-    convert_format:
-        infile: "result_ord"
-        informat: "lammps-data"
-        outformat: "xyz"
-        outfile: "result_ord_x"
+    relax_polygpu:
+        infile: "result_min"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 1e6
+        relax_time: 1e7
+        cool_time: 1e6
+        outfile: "Ag_10nm_reord_relax.lmp"
 
 pipeline_example: # запускается pipeline
     #step 1: create polycrystal
-    create_monocrystal: # Только кубические TODO ГПУ и тетрагональные
+    create_monocrystal: # https://atomsk.univ-lille.fr/doc/en/mode_create.html
         type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
         a: 4.08 # Размер решетки
-        c: 0 # для дальнейшей генерации тетрагональных и гексагональных решеток
+        c: 0 # для генерации тетрагональных и гексагональных решеток
         atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
         outname: "fcc.xsf"
     create_polycrystal:
         x: 100 # angstrem
-        y: 100 # TODO now only cubic
-        z: 100 # TODO
+        y: 100
+        z: 100
         grain_num: 10 # Как много зерен
         stamp_file: "fcc.xsf"
         outfile: "Ag_10nm.lmp" # to avoid errors use inside pipeline ordered lammps data file
@@ -28,25 +35,25 @@ pipeline_example: # запускается pipeline
     reorder_index:
         infile: "Ag_10nm.lmp"
         outfile: "Ag_10nm_reord.lmp"
-    convert_format: #TODO atomask or ase or ovito
+    convert_format:
         infile: "Ag_10nm_reord.lmp"
         informat: "lammps/data" #
         outfile: "Ag_10nm_reord.xyz"
         outformat: "xyz"
-    convert_format_atomsk: #TODO atomask or ase or ovito
+    convert_format_atomsk:
         infile: "Ag_10nm_reord.lmp"
         outfile: "Ag_10nm_reord.xyz"
     minimize_polycrystal:
         infile: "Ag_10nm_reord.lmp"
         potential_type: "eam/fs"
-        potetntial: "Ag-Ni.eam.fs" # TODO add potential type
+        potential: "Ag-Ni.eam.fs" 
         atomtypes: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
         outfile: "Ag_10nm_reord_min.lmp"
-        energy_file: "pureE" # path to file, if none file doesnt create
+        energy_file: "pureE"
     relax_polycrystal:
         infile: "Ag_10nm_reord.lmp"
         potential_type: "eam/fs"
-        potetntial: "Ag-Ni.eam.fs" # TODO add potential type
+        potential: "Ag-Ni.eam.fs" 
         atomtypes: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
         init_temp: 0.1
         start_temp: 700
@@ -69,13 +76,13 @@ pipeline_example: # запускается pipeline
         l_max: 12
         sigma: 1
         atomtypes: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
-        outfile: "soap.lst" # TODO
+        outfile: "soap.lst"
         cores: False
     extract_pca:
         infile: "soap.lst"
         pca_num: 10
         outfile: "pca.lst"
-        dispersion_file: False # create file with dispersion by component
+        dispersion_file: False # TODO create file with dispersion by component
     select_points:
         infile: "pca.lst"
         gb_file: "GBs.lst"
@@ -86,13 +93,13 @@ pipeline_example: # запускается pipeline
     add_impurity:
         infile: "Ag_10nm_reord_relax.lmp"
         imp_id: 0
-        atomtypes: False # TODO use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        atomtypes: False
         outfile: "Ag_10nm_reord_relax_imp.lmp"
     replace_and_minimize:
         infile: "Ag_10nm_reord_relax.lmp"
         imp_id: 0
         minimize_func: "minimize_polycrystal"
-        potetntial: "Ag-Ni.eam.fs"
+        potential: "Ag-Ni.eam.fs"
         minimize-args:
             potential_type: "eam/fs"
         atomtypes: False
@@ -103,7 +110,7 @@ pipeline_example: # запускается pipeline
         atomtypes: False
         base_energy: "pureE"
         minimize_func: "minimize_polycrystal"
-        potetntial: "Ag-Ni.eam.fs"
+        potential: "Ag-Ni.eam.fs"
         minimize-args:
             potential_type: "eam/fs"
         outfile: "Eseg_best_calc"
@@ -113,10 +120,23 @@ pipeline_example: # запускается pipeline
         y_file: "Eseg_best"
         gb_file: "GBs_best"
         outfile: "AgNi-nn.pkl"
-        metrics: ["MAE"]
+        metrics: ["MAE"] # TODO
     predict_lr:
         infile: "pca.lst"
         gb_file: "GBs.lst"
         model_file: "AgNi-nn.pkl"
         outfile: "Eseg_pred"
-        metrics: ["MAE"]
+        metrics: ["MAE"] # TODO
+    # gpumd
+    relax_polygpu:
+        infile: "Ag_10nm_reord.lmp"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 1e6
+        relax_time: 1e7
+        cool_time: 1e6
+        outfile: "Ag_10nm_reord_relax.lmp"

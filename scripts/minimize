@@ -24,7 +24,7 @@ thermo_style custom temp pe
 # Define minimization parameters
 min_style cg
 
-minimize 1.0e-7 1.0e-7 1000 1000
+minimize 1.0e-7 1.0e-7 1e6 1e6
 
 # Run the simulation
 run 0

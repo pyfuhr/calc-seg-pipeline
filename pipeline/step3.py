@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.decomposition import PCA
 import ovito as ov
-from utils import get_atomicnum_from_specs
+from pipeline.utils import get_atomicnum_from_specs
 import numpy as np
 import multiprocessing
 from dscribe.descriptors.soap import SOAP

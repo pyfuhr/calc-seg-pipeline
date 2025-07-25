@@ -1,0 +1,5 @@
+minimize fire 1.0e-7 1e6
+velocity 0.000000000001
+dump_thermo 1
+ensemble nve
+run 1

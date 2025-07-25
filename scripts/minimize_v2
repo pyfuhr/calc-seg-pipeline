@@ -24,12 +24,12 @@ thermo_style custom temp pe
 # Define minimization parameters
 min_style cg
 
-minimize 1.0e-7 1.0e-7 1000 1000
+minimize 1.0e-7 1.0e-7 1e6 1e6
 
 # Run the simulation
 run 0
 fix 1 all box/relax iso 1000 vmax 0.01
-minimize 1.0e-7 1.0e-7 1000 1000
+minimize 1.0e-7 1.0e-7 1e6 1e6
 compute pot_energy2 all pe
 compute temp2 all temp
 thermo_style custom temp pe
