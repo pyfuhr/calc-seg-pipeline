@@ -8,6 +8,10 @@ from dscribe.descriptors import SOAP
 import pickle as pkl
 from joblib import Parallel, delayed
 import os
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics import pairwise_distances_argmin_min
+import pandas as pd
 
 @njit
 def calc_neigh(rs, gb_ids, print_each, cutoff): 
@@ -104,3 +108,39 @@ def soap_neigboor(d, infile, gb_file, neighboor_file, atomtypes, n_max, l_max, s
     for i in range(len(lkey)):
         split_pairs[i%processes].append((lkey[i], pairs[lkey[i]]))
     Parallel(cores)(delayed(calc_part)(i, system.copy(), split_pairs[i].copy(), atomtypes, n_max, l_max, sigma) for i in range(processes))
+
+def connect_parts(d, path, outfile):
+    if os.path.isfile(outfile):
+        os.remove(outfile)
+    os.system(f'touch {outfile}')
+    for file in os.listdir(path):
+        arr = []
+        with open(path+file, 'rb') as f:
+            desc, atoms = pkl.load(f)
+            for at, dsc in zip(atoms, desc):
+                arr.extend(at, dsc)
+        with open(outfile, 'a') as f:
+            for i in arr:
+                f.write(','.join(map(str, i)))
+    
+def extract_pairs_pca(d, infile, pca_num, outfile):
+    soap = pd.read_csv(f"project/{d['projname']}/{infile}", sep=' ', header=None)
+    pca_x = PCA(n_components=pca_num, svd_solver="full")
+    pca = pca_x.fit_transform(soap.iloc[:, 2:].values)
+    pca = pd.DataFrame(pca)
+    pca['at1'] = soap[0]
+    pca['at2'] = soap[1]
+
+    pca.to_csv(f"project/{d['projname']}/{outfile}")
+
+def select_pairs(d, infile, points_num, outfile, random_state=42):
+    
+    xpca_all = pd.read_csv(f"project/{d['projname']}/{infile}", header=None)
+    kmeans = KMeans(n_clusters=points_num, random_state=random_state)
+    kmeans.fit(xpca_all.iloc[:, 2:])
+
+    best_lae_indices, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, xpca_all.iloc[:, 2:])
+
+    with open(f"project/{d['projname']}/{outfile}", 'w') as f:
+        for i in best_lae_indices:
+            f.write(f"{' '.join(xpca_all.iloc[:2].values[i].tolist())}\n")

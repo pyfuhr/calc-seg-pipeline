@@ -31,7 +31,7 @@ pipeline:
     relax_polycrystal:
         infile: "Ag_10nm_reord.lmp"
         potential_type: "eam/fs"
-        potetntial: "Ag-Ni.eam.fs
+        potetntial: "Ag-Ni.eam.fs"
         atomtypes: ["Ag"]
         init_temp: 0.1
         start_temp: 700
