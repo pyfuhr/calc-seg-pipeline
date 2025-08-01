@@ -4,15 +4,20 @@ from pipeline.step3 import get_gb_ids, select_points, soap, extract_pca
 from pipeline.step4 import add_impurity, replace_and_minimize, calculate_spectra
 from pipeline.step5 import train_lr, predict_lr
 from pipeline.step2_gpumd import relax_polycrystal as relax_polygpu
+from pipeline.step2_gpumd import minimize_polycrystal as minimize_polygpu
 
 d_global = globals().copy()
 for i in list(d_global.keys()):
     if i.startswith('__'):
         del d_global[i]
 
-import yaml
+import os
 
 def run(d):
+    if not os.path.isdir('project'):
+        os.mkdir('project')
+    if not os.path.isdir(f"project/{d['projname']}"):
+        os.mkdir(f"project/{d['projname']}")
     global d_global
     pipeline:dict = d['pipeline']
     for d_func, d_args in pipeline.items():
@@ -108,8 +113,8 @@ def run(d):
             case 'relax_polygpu':
                 args = d_args.copy()
                 relax_polygpu(d, **args)
+            case 'minimize_polygpu':
+                args = d_args.copy()
+                minimize_polygpu(d, **args)
             case _:
-                print(-1)
-        '''if args.get('outfile', False):
-            with open(f'project/{d["projname"]}/{args["outfile"]}.meta', 'w+') as f:
-                yaml.dump(args+d["specs"], f)'''
+                print("No such command")

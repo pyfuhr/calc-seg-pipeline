@@ -9,6 +9,7 @@ from tqdm import tqdm
 from time import sleep
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
+from pipeline.metabuilder import create_meta
 
 q_step3 = multiprocessing.Queue()
 
@@ -31,6 +32,10 @@ def start_subcalc(id, system, cores, species, soap_cutoff, n_max, l_max, sigma, 
     cnt.value -= 1
 
 def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=False):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}',],
+                    f'Calculate soap vector\nSoap constants (cutoff, n, l, sigma): {(soap_cutoff, n_max, l_max, sigma)}\n'
+                    f'Atomtypes{atomtypes}')
     '''first - spec of matrix, second - spec of impurity'''
     pipeline = ov.io.import_file(f'project/{d["projname"]}/{infile}')
     data = pipeline.compute()
@@ -60,6 +65,9 @@ def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=
             f.write(f'{row[0]} {" ".join(map(str, row[1]))}\n')
 
 def get_gb_ids(d, infile, cutoff, outfile):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}',],
+                    f'Get grain border atom\nCutoff: {cutoff}')
     node = ov.io.import_file(f'project/{d["projname"]}/{infile}')
     fixed_mode = ov.modifiers.CommonNeighborAnalysisModifier.Mode.FixedCutoff
     modifier1 = ov.modifiers.CommonNeighborAnalysisModifier(mode=fixed_mode, cutoff=cutoff)
@@ -76,6 +84,9 @@ def get_gb_ids(d, infile, cutoff, outfile):
     np.savetxt(f'project/{d["projname"]}/{outfile}', np.array(gb_atoms_indices, dtype=np.int32))
 
 def extract_pca(d, infile, pca_num, outfile):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'PCA num: {pca_num}')
     soap = pd.read_csv(f"project/{d['projname']}/{infile}", sep=' ', header=None)
     soap = soap.set_index(0)
     soap.sort_index(inplace=True)
@@ -87,6 +98,9 @@ def extract_pca(d, infile, pca_num, outfile):
     pca.to_csv(f"project/{d['projname']}/{outfile}")
 
 def select_points(d, infile, gb_file, points_num, outfile, random_state=42):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{gb_file}', ],
+                    f'Select {points_num} points\nRandom state: {random_state}')
     ind = np.loadtxt(f"project/{d['projname']}/{gb_file}").astype(np.int32)
     xpca_all = pd.read_csv(f"project/{d['projname']}/{infile}", usecols=[1,2,3,4,5,6,7,8,9,10,11])
     xpca_all['idc'] = xpca_all['id'].copy()

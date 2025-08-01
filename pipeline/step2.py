@@ -3,16 +3,26 @@ from subprocess import Popen, PIPE
 import ase.io
 import string
 from pipeline.utils import get_masses_from_specs
+from pipeline.metabuilder import create_meta
 
 def reorder_index(d, infile, outfile):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'Reorder file')
     system = ovito.io.import_file(f"project/{d['projname']}/{infile}", sort_particles=True)
     ovito.io.export_file(system, f"project/{d['projname']}/{outfile}", "lammps/data")
 
 def convert_format(d, infile, informat=None, outfile=None, outformat=None):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'Convert format from {informat} to {outformat}')
     system = ase.io.read(f"project/{d['projname']}/{infile}", format=informat)
     system.write(f"project/{d['projname']}/{outfile}", outformat)
 
 def convert_format2(d, infile, outfile):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'Convert format via atomsk')
     cmd = ['atomsk', f"project/{d['projname']}/{infile}", f"project/{d['projname']}/{outfile}"]
     print("Run:", " ".join(cmd))
     p = Popen(cmd, stdout=PIPE, stderr=PIPE)
@@ -20,6 +30,10 @@ def convert_format2(d, infile, outfile):
     p.returncode
 
 def minimize_polycrystal(d, infile, protential_type, potential, atomtypes, outfile, energy_file, cores=False):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'Minimize polycrystal using lammps\nPotential: {potential} ({protential_type})'
+                    f'Atomtypes: {atomtypes}\nEnergy stored to {energy_file}')
     with open('scripts/minimize_v2', 'r') as fr:
         with open(f"project/{d['projname']}/minimizelmp", 'w') as fw:
             src = string.Template(fr.read())
@@ -39,6 +53,11 @@ def minimize_polycrystal(d, infile, protential_type, potential, atomtypes, outfi
 
 def relax_polycrystal(d, infile, protential_type, potential, atomtypes, init_temp, start_temp, stop_temp, 
                       end_temp, heat_time, relax_time, cool_time, outfile, cores):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', ],
+                    f'Thermal relaxing using lammps\nPotential: {potential} ({protential_type})'
+                    f'Atomtypes: {atomtypes}\nTemperatures: {(init_temp, start_temp, stop_temp, end_temp)}'
+                    f'Time(heating, relaxing, cooling): {(heat_time, relax_time, cool_time)}')
     with open('scripts/thermal_an_v2', 'r') as fr:
         with open(f"project/{d['projname']}/thermal_an", 'w') as fw:
             src = string.Template(fr.read())

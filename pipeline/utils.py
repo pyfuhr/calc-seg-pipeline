@@ -1,5 +1,10 @@
 import numpy as np
 import pandas as pd
+
+def transponse(M):
+    return [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]
+
+
 def calculate_Fm(d, infile, Eb_in_a, outfile):
     Ebina = np.loadtxt(f"project/{d['projname']}/{Eb_in_a}")
     Eseg = np.loadtxt(f"project/{d['projname']}/{infile}") / Ebina

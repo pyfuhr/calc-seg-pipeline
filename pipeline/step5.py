@@ -6,8 +6,13 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from pipeline.metabuilder import create_meta
 
 def train_lr(d, x_file, y_file, gb_file, outfile, metrics=None):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{x_file}', f'project/{d["projname"]}/{y_file}', 
+                     f'project/{d["projname"]}/{gb_file}', ],
+                    f'train linear regression model')
     xy_left = pd.read_csv(f"project/{d['projname']}/{x_file}", usecols=[1,2,3,4,5,6,7,8,9,10,11]) # pca vector, then id
     xy_left = xy_left.set_index('id')
     xy_right = pd.read_csv(f"project/{d['projname']}/{y_file}", sep=' ', header=None, names=['id', 'val']) # first - id, then one energy
@@ -59,6 +64,10 @@ def train_lr(d, x_file, y_file, gb_file, outfile, metrics=None):
     plt.savefig('img.png')
 
 def predict_lr(d, infile, gb_file, model_file, outfile, metrics=None, learn_file=None):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{infile}', f'project/{d["projname"]}/{gb_file}', 
+                     f'project/{d["projname"]}/{model_file}', ],
+                    f'predict energies')
     xy_left = pd.read_csv(f"project/{d['projname']}/{infile}", usecols=[1,2,3,4,5,6,7,8,9,10,11]) # pca vector, then id
     xy_left = xy_left.set_index('id')
     gbs = np.loadtxt(f"project/{d['projname']}/{gb_file}").astype(int)

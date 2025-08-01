@@ -1,9 +1,13 @@
 import os
 from subprocess import Popen, PIPE
 from glob import glob
+from pipeline.metabuilder import create_meta
 
 def create_monocrystal(d, type, a, atomtypes, outfile, c=0): # TODO add nanotube
     # https://atomsk.univ-lille.fr/doc/en/mode_create.html
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [],
+                    f'Create monocrystal, type: {type}\nLattice const: {(a, c)}\nAtomtypes: {atomtypes}')
     latice_num = 0
     atomtypes_num = []
     if type in ['sc', 'bcc', 'CsCl', 'fcc', 'L12', 'L1_2',
@@ -33,6 +37,9 @@ def create_monocrystal(d, type, a, atomtypes, outfile, c=0): # TODO add nanotube
     p.returncode
 
 def create_polycrystal(d, x, y, z, grain_num, stamp_file, outfile):
+    create_meta(f'project/{d["projname"]}/{outfile}',
+                    [f'project/{d["projname"]}/{stamp_file}'],
+                    f'Create polycrystal with box: {(x, y, z)} and {grain_num} grains')
     with open(f'project/{d["projname"]}/polycrystal_param.txt', 'w') as f:
         f.write(f'box {x} {y} {z}\nrandom {grain_num}')
     # atomsk --polycrystal fcc_unitcell.xsf voronoi_random.txt fcc_polycrystal.cfg lmp

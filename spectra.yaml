@@ -1,32 +1,31 @@
-projname: "test2"
-specs: ["Ag", "Ni"]
+projname: "AgW"
+specs: ["Ag", "W"]
 cores: 54
 
 pipeline:
-    get_gb_ids:
+    _minimize_polygpu:
         infile: "Ag_10nm.lmp"
-        cutoff: 3.5
-        outfile: "GBs.lst" # only row index
-    _soap:
+        intype: "lammps-data"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used"
+        outfile: "Ag_10nm_min.xyz"
+        energy_file: "pureE"
+        tmp_name: "tmp_dir"
+        minimize_vol: True
+    relax_polygpu:
         infile: "dump.xyz"
-        soap_cutoff: 6.0
-        n_max: 12
-        l_max: 12
-        sigma: 1
-        atomtypes: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
-        outfile: "soap.lst"
-        cores: False
-    _extract_pca:
-        infile: "soap.lst"
-        pca_num: 10
-        outfile: "pca.lst"
-        dispersion_file: False # TODO create file with dispersion by component
-    _select_points:
-        infile: "pca.lst"
-        gb_file: "GBs.lst"
-        points_num: 200
-        outfile: "GBs_best.lst"
-        random_state: 42
+        intype: "extxyz"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 100000
+        relax_time: 1000000
+        cool_time: 100000
+        outfile: "Ag_10nm_relax.lmp"
+        elastic_mod: 76 # https://www.matweb.com/search/datasheet.aspx?MatGUID=63cbd043a31f4f739ddb7632c1443d33&ckck=1
 
 pipeline_spectra:
     minimize_polygpu:

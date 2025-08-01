@@ -1,5 +1,10 @@
-minimize fire 1.0e-7 1e6
-velocity 0.000000000001
-dump_thermo 1
+potential $potential
+velocity 0.00001
+time_step 0
+
+minimize fire 0.001 10000 $minvol
 ensemble nve
+dump_thermo 1
+dump_exyz 1 0 1 1
+
 run 1
