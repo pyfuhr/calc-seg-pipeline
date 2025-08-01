@@ -2,7 +2,12 @@ from numba import njit
 import numpy as np
 import ase.io
 from pipeline.metabuilder import create_meta
-from pipeline.utils import transponse
+from pipeline.utils import transponse, get_atomicnum_from_specs
+from tqdm import tqdm
+from dscribe.descriptors import SOAP
+import pickle as pkl
+from joblib import Parallel, delayed
+import os
 
 @njit
 def calc_neigh(rs, gb_ids, print_each, cutoff): 
@@ -46,3 +51,56 @@ def select_neighboor(d, infile, GB_file, cutoff, outfile):
                 f.write(' '.join(map(str, row))+'\n')
             else:
                 f.write('-1\n')
+
+def calc_part(d, id, system, part:list, atomtypes, cutoff, n_max,l_max,sigma):
+    species = get_atomicnum_from_specs(atomtypes)
+
+    soap = SOAP(species=species, periodic=True, r_cut=cutoff, 
+                n_max=n_max, l_max=l_max, sigma=sigma)
+    atomic_number1, atomic_number2 = species
+    system = system.copy()
+    out1 = []
+    out2 = []
+    x_id = []
+
+    for row in (part if id!=0 else tqdm(part)):
+        a1 = row[0]
+        for a2 in row[1]:
+            atomic_numbers = np.ones(len(system))*int(atomic_number1)
+            atomic_numbers[a2-1] = int(atomic_number2)
+            system.set_atomic_numbers(atomic_numbers)
+            out1.append(soap.create(system, centers=[a1-1], n_jobs=1))
+            atomic_numbers = np.ones(len(system))*int(atomic_number1)
+            atomic_numbers[a1-1] = int(atomic_number2)
+            system.set_atomic_numbers(atomic_numbers)
+            out2.append(soap.create(system, centers=[a2-1], n_jobs=1))
+            x_id.append((a1-1,a2-1))  
+
+    a = np.array([out1[i][:, soap.get_location(('Ag', 'Ni'))] for i in range(len(out1))])
+    b = np.array([out2[i][:, soap.get_location(('Ag', 'Ni'))] for i in range(len(out2))])
+    c = np.array([out1[i][:, soap.get_location(('Ag', 'Ag'))] for i in range(len(out1))])
+    dd = np.array([out2[i][:, soap.get_location(('Ag', 'Ag'))] for i in range(len(out2))])
+    desc = np.concatenate((a,b,c,dd), axis=-1).squeeze()
+
+    if not os.path.isdir(f'project/{d['projname']}/nsoappart'):
+        os.mkdir(f'project/{d['projname']}/nsoappart')
+    with open(f'project/{d['projname']}/nsoappart/neight_part{id}.pkl', 'wb') as f:
+        pkl.dump((desc, x_id), f)
+
+def soap_neigboor(d, infile, gb_file, neighboor_file, atomtypes, n_max, l_max, sigma, cores):
+    processes = cores * 25
+    system = ase.io.read(f"project/{d['projname']}/{infile}")
+    pairs = {}
+    with open(f"project/{d['projname']}/{gb_file}", 'r') as fgb:
+        with open(f"project/{d['projname']}/{neighboor_file}", 'r') as fng:
+            atoms = [int(i) for i in fgb.read().split('\n')[:-1]]
+            neighs = [list(map(int, i)) for i in fng.read().split('\n')[:-1]]
+            for at, ng in zip(atoms, neighs):
+                if ng[0] == -1: continue
+                pairs[at] = ng
+
+    split_pairs = [[] for i in range(processes)]
+    lkey = list(pairs.keys())
+    for i in range(len(lkey)):
+        split_pairs[i%processes].append((lkey[i], pairs[lkey[i]]))
+    Parallel(cores)(delayed(calc_part)(i, system.copy(), split_pairs[i].copy(), atomtypes, n_max, l_max, sigma) for i in range(processes))

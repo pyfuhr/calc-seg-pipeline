@@ -1,3 +1,5 @@
+project still in development
+
 # Installing
 ```bash
 # apt install python3-venv python3-pip
@@ -40,7 +42,6 @@ pipeline:
         cool_time: 1e6
         outfile: "Ag_10nm_reord_relax.lmp"
 
-not_all_command_under_implemented_now
 pipeline_commands:
     - create_monocrystal
     - create_polycrystal
@@ -59,4 +60,10 @@ pipeline_commands:
     - train_lr
     - predict_lr
     - utils
+    - minimize_polygpu
+    - relax_polygpu
+    - select_neighboor
+    - soap_neighboor
+    - calculate_wspectra
 ```
+
