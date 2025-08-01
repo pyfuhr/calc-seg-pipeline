@@ -1,13 +1,17 @@
 # Installing
 ```bash
+# apt install python3-venv python3-pip
 git clone https://github.com/pyfuhr/calc-seg-pipeline
 cd calc-seg-pipeline
-python -m venv .venv # create virtual environment
+python3 -m venv .venv # create virtual environment
 source .venv/bin/activate # activate venv for bash
 pip install -r requirements.txt
 ```
 
 # Usage
+
+`$ python3 main.py file.yaml`
+
 Edit yaml in project root directory <br>
 Examlpe yaml file with list commands
 
