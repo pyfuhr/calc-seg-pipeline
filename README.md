@@ -60,5 +60,3 @@ pipeline_commands:
     - predict_lr
     - utils
 ```
-
-Then edit filename in pipeline/runner.py in 5 row (todo add normal iface)
