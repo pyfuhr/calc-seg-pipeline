@@ -6,17 +6,20 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pipeline.metabuilder import create_meta
+from metabuilder import create_meta
 
-def train_lr(d, x_file, y_file, gb_file, outfile, metrics=None):
+def train_lr(d, x_file, y_file, id_file, gb_file, outfile, metrics=None):
     create_meta(f'project/{d["projname"]}/{outfile}',
                     [f'project/{d["projname"]}/{x_file}', f'project/{d["projname"]}/{y_file}', 
                      f'project/{d["projname"]}/{gb_file}', ],
                     f'train linear regression model')
     xy_left = pd.read_csv(f"project/{d['projname']}/{x_file}", usecols=[1,2,3,4,5,6,7,8,9,10,11]) # pca vector, then id
     xy_left = xy_left.set_index('id')
-    xy_right = pd.read_csv(f"project/{d['projname']}/{y_file}", sep=' ', header=None, names=['id', 'val']) # first - id, then one energy
+
+    xy_right = pd.read_csv(f"project/{d['projname']}/{y_file}", sep=' ', header=None, names=['val'])*96.486 # first - id, then one energy
+    xy_right['id'] = pd.read_csv(f"project/{d['projname']}/{id_file}", sep=' ', header=None, names=['id'])['id'] # first - id, then one energy
     xy = pd.merge(xy_left, xy_right, 'inner', on='id')
+    
     # xy structure: id, *soap_vectors, energy
     X_train, X_test, y_train, y_test = train_test_split(xy.iloc[:, 1:-1], xy.iloc[:, -1], test_size=0.9, random_state=42)
 
@@ -35,7 +38,7 @@ def train_lr(d, x_file, y_file, gb_file, outfile, metrics=None):
     print("Test MAE     = %.2f kJ/mol"%(mae_test))
     print("Dataset MAE  = %.2f kJ/mol"%(mae_all))
     print("Dataset RMS  = %.2f kJ/mol"%(rms_all))
-
+    
     low  = -40
     high = 40
     lims = [low,high]
@@ -84,9 +87,8 @@ def predict_lr(d, infile, gb_file, model_file, outfile, metrics=None, learn_file
     if not learn_file is None:
         ax2.hist(np.loadtxt(f"project/{d['projname']}/{learn_file}").T[1], bins=100, alpha=0.5, color="green", label="True")
 
-    plt.show()
     plt.savefig('img_dif.png')
 
 
-#train_lr({'projname': 'test'}, 'pca.lst', 'Eseg_best_calc.txt', None, 'AgNi-nn.pkl')
-#predict_lr({'projname': 'test'}, 'pca.lst', 'GBs.lst', 'AgNi-nn.pkl', 'Eseg_pred', None)
+train_lr({'projname': 'Nt'}, 'pca.lst', 'Eseg_best_moved', 'GBs_best.lst', 'GBs.lst', 'model.pkl')
+predict_lr({'projname': 'Nt'}, 'pca.lst', 'GBs.lst', 'model.pkl', 'Eseg_pred', None)

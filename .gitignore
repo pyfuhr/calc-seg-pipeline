@@ -7,3 +7,4 @@ log*
 stp52*
 **/__pycache__
 log.lammps
+**/*.png
