@@ -1,0 +1,311 @@
+projname: "AgV"
+specs: ["Ag", "V"]
+cores: 20
+# TODO: сохранять дисперсию в файл, автоопределение атом в зерне
+pipeline:
+    - _create_monocrystal: # https://atomsk.univ-lille.fr/doc/en/mode_create.html
+            type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
+            a: 4.08 # Размер решетки
+            c: 0 # для генерации тетрагональных и гексагональных решеток
+            atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
+            outfile: "fcc.xsf"
+    - _create_polycrystal:
+        x: 150 # angstrem
+        y: 150
+        z: 150
+        grain_num: 10 # Как много зерен
+        stamp_file: "fcc.xsf"
+        outfile: "Ag_10nm.lmp"
+    - _convert_format_atomsk:
+        infile: "Ag_10nm.lmp"
+        outfile: "Ag_10nm.xyz"   
+    - _minimize_polygpu:
+        infile: "Ag_10nm.lmp"
+        intype: "lammps-data"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used"
+        outfile: "Ag_10nm_min.xyz"
+        energy_file: "pureE"
+        tmp_name: "tmp_dir"
+        minimize_vol: True
+    - _make_orthogonal:
+        infile: "Ag_10nm_min.xyz"
+    - _relax_polygpu:
+        infile: "Ag_10nm_min.xyz"
+        intype: "extxyz"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 100000
+        relax_time: 1000000
+        cool_time: 100000
+        outfile: "Ag_10nm_relax.xyz"
+        tmp_name: "tmp_dir"
+        elastic_mod: 76 # https://www.matweb.com/search/datasheet.aspx?MatGUID=63cbd043a31f4f739ddb7632c1443d33&ckck=1
+    
+    - _minimize_polygpu:
+        infile: "Ag_10nm_relax.xyz"
+        intype: "extxyz"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used"
+        outfile: "Ag_10nm_min2.xyz"
+        energy_file: "pureE"
+        tmp_name: "tmp_dir"
+        minimize_vol: True
+    - _make_orthogonal:
+        infile: "Ag_10nm_min2.xyz"
+
+    - _convert_format_atomsk:
+        infile: "Ag_10nm_min2.xyz"
+        outfile: "Ag_10nm_min2.lmp"
+    - _get_gb_ids:
+        infile: "Ag_10nm_min2.lmp"
+        cutoff: 3.5
+        outfile: "GBs.lst" # only row index
+    - _soap:
+        infile: "Ag_10nm_min2.lmp"
+        soap_cutoff: 6.0
+        n_max: 12
+        l_max: 12
+        sigma: 1
+        atomtypes: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        outfile: "soap.lst"
+        cores: False
+    - _extract_pca:
+        infile: "soap.lst"
+        pca_num: 10
+        outfile: "pca.lst"
+        # dispersion_file: False # TODO create file with dispersion by component
+    - _select_points:
+        infile: "pca.lst"
+        gb_file: "GBs.lst"
+        points_num: 300
+        outfile: "GBs_best.lst"
+        random_state: 420
+    # from here if you already create polycrystal (use underline "_" to skip step)
+    - calculate_spectra:
+        infile: "Ag_10nm_min2.lmp"
+        gb_file: "GBs_best.lst"
+        atomtypes: False
+        base_energy: "pureE"
+        minimize_func: "minimize_polygpu"
+        potential: "Unep_v1.txt"
+        minimize_args:
+            intype: "lammps-data"
+            energy_file: "E"
+            tmp_name: "tmp_dir"
+        outfile: "Eseg_best_calc"
+    
+    - calculate_spectra:
+        infile: "Ag_10nm_min2.lmp"
+        gb_file: "Bulk_ids.lst"
+        atomtypes: False
+        base_energy: "nullE"
+        minimize_func: "minimize_polygpu"
+        potential: "Unep_v1.txt"
+        minimize_args:
+            intype: "lammps-data"
+            energy_file: "E"
+            tmp_name: "tmp_dir"
+        outfile: "Enull_calc"
+
+    - move_spectra:
+        pureE: "pureE"
+        trueE: "Enull_calc"
+        spectra: "Eseg_best_calc"
+        outfile: "Eseg_best_moved"
+
+
+pipeline_spectra:
+    minimize_polygpu:
+        infile: "ag_10nm_ann_min.xyz"
+        intype: "extxyz"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used"
+        outfile: "tmp_out.xyz"
+        energy_file: "pureE"
+        tmp_name: "tmp_dir"
+
+    calculate_spectra:
+        infile: "ag_10nm_ann_min.xyz"
+        gb_file: "GBs_best.lst"
+        atomtypes: "Not used, from xyz file"
+        base_energy: "pureE"
+        minimize_func: "minimize_polygpu"
+        potential: "Unep_v1.txt"
+        minimize-args:
+            intype: "extxyz"
+            outfile: "tmp_out.xyz"
+            energy_file: "E"
+            tmp_name: "tmp_dir"
+        outfile: "Eseg_best_calc"
+
+
+_pipeline:
+    create_monocrystal: # https://atomsk.univ-lille.fr/doc/en/mode_create.html
+        type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
+        a: 4.08 # Размер решетки
+        c: 0 # для генерации тетрагональных и гексагональных решеток
+        atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
+        outfile: "fcc.xsf"
+    create_polycrystal:
+        x: 100 # angstrem
+        y: 100
+        z: 100
+        grain_num: 10 # Как много зерен
+        stamp_file: "fcc.xsf"
+        outfile: "Ag_10nm.lmp"
+    _relax_polygpu:
+        infile: "Ag_10nm.lmp"
+        potential: "UNEP_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 1000000
+        relax_time: 10000000
+        cool_time: 1000000
+        elastic_mod: 83
+        outfile: "Ag_10nm_gpurelax.lmp"
+
+pipeline_commands_example: # запускается pipeline
+    #step 1: create polycrystal
+    create_monocrystal: # https://atomsk.univ-lille.fr/doc/en/mode_create.html
+        type: fcc # fcc ГЦК, bcc ОЦК, sc примитивная 
+        a: 4.08 # Размер решетки
+        c: 0 # для генерации тетрагональных и гексагональных решеток
+        atomtypes: False # если False, то используется specs[0]; если число, то specs[atom_type]; если str то оно и используется
+        outfile: "fcc.xsf"
+    create_polycrystal:
+        x: 100 # angstrem
+        y: 100
+        z: 100
+        grain_num: 10 # Как много зерен
+        stamp_file: "fcc.xsf"
+        outfile: "Ag_10nm.lmp" # to avoid errors use inside pipeline ordered lammps data file
+    #step 2: minimize and relax polycrystal
+    reorder_index:
+        infile: "Ag_10nm.lmp"
+        outfile: "Ag_10nm_reord.lmp"
+    convert_format:
+        infile: "Ag_10nm_reord.lmp"
+        informat: "lammps/data" #
+        outfile: "Ag_10nm_reord.xyz"
+        outformat: "xyz"
+    convert_format_atomsk:
+        infile: "Ag_10nm_reord.lmp"
+        outfile: "Ag_10nm_reord.xyz"
+    minimize_polycrystal:
+        infile: "Ag_10nm_reord.lmp"
+        potential_type: "eam/fs"
+        potential: "Ag-Ni.eam.fs" 
+        atomtypes: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        outfile: "Ag_10nm_reord_min.lmp"
+        energy_file: "pureE"
+    relax_polycrystal:
+        infile: "Ag_10nm_reord.lmp"
+        potential_type: "eam/fs"
+        potential: "Ag-Ni.eam.fs" 
+        atomtypes: ["Ag"] # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 1e5
+        relax_time: 1e6
+        cool_time: 1e6
+        outfile: "Ag_10nm_reord_relax.lmp"
+        cores: False
+    # step 3: calculate X data for training (gb_ids, soap_vector)
+    get_gb_ids:
+        infile: "Ag_10nm_reord_relax.lmp"
+        cutoff: 3.5
+        outfile: "GBs.lst" # only row index
+    soap:
+        infile: "Ag_10nm_reord_relax.lmp"
+        soap_cutoff: 6.0
+        n_max: 12
+        l_max: 12
+        sigma: 1
+        atomtypes: False # use specs else list of integer contain atomic number (not index in specs), 0-bulk, 1-impurity
+        outfile: "soap.lst"
+        cores: False
+    extract_pca:
+        infile: "soap.lst"
+        pca_num: 10
+        outfile: "pca.lst"
+        dispersion_file: False # TODO create file with dispersion by component
+    select_points:
+        infile: "pca.lst"
+        gb_file: "GBs.lst"
+        points_num: 200
+        outfile: "GBs_best.lst"
+        random_state: 42
+    # step 4: calculate Y data: spectra of segregation energy
+    add_impurity:
+        infile: "Ag_10nm_reord_relax.lmp"
+        imp_id: 0
+        atomtypes: False
+        outfile: "Ag_10nm_reord_relax_imp.lmp"
+    replace_and_minimize:
+        infile: "Ag_10nm_reord_relax.lmp"
+        imp_id: 0
+        minimize_func: "minimize_polycrystal"
+        potential: "Ag-Ni.eam.fs"
+        minimize-args:
+            potential_type: "eam/fs"
+        atomtypes: False
+        energy_file: "pureE"
+    calculate_spectra:
+        infile: "Ag_10nm_reord_relax.lmp"
+        gb_file: "GBs_best.lst"
+        atomtypes: False
+        base_energy: "pureE"
+        minimize_func: "minimize_polycrystal"
+        potential: "Ag-Ni.eam.fs"
+        minimize-args:
+            potential_type: "eam/fs"
+        outfile: "Eseg_best_calc"
+    # step 5: train model
+    train_lr:
+        x_file: "pca.lst"
+        y_file: "Eseg_best"
+        gb_file: "GBs_best"
+        outfile: "AgNi-nn.pkl"
+        metrics: ["MAE"] # TODO
+    predict_lr:
+        infile: "pca.lst"
+        gb_file: "GBs.lst"
+        model_file: "AgNi-nn.pkl"
+        outfile: "Eseg_pred"
+        metrics: ["MAE"] # TODO
+    # gpumd
+    minimize_polygpu:
+        infile: "Ag_10nm.lmp"
+        intype: "lammps-data"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used"
+        outfile: "Ag_10nm_min.xyz"
+        energy_file: "pureE"
+        tmp_name: "tmp_dir"
+        minimize_vol: True
+    relax_polygpu:
+        infile: "dump.xyz"
+        intype: "extxyz"
+        potential: "Unep_v1.txt" 
+        atomtypes: "not used" # if None: default specs in head of file; if list of int -> user specs[*atom_types]; if list of str (use it)
+        init_temp: 0.1
+        start_temp: 700
+        stop_temp: 700
+        end_temp: 0.1
+        heat_time: 100000
+        relax_time: 1000000
+        cool_time: 100000
+        outfile: "Ag_10nm_relax.lmp"
+        tmp_name: "tmp_dir"
+        elastic_mod: 76
+    #step 6: compite pairs

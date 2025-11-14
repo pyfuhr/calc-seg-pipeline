@@ -30,3 +30,19 @@ def get_atomicnum_from_specs(specs):
     for i in specs:
         ret.append(int(df[df['Symbol']==i]['AtomicNumber'].iloc[0]))
     return ret
+
+def get_specs_from_atomicnums(atomicnum):
+    df = pd.read_csv('elements.csv')
+    if isinstance(atomicnum, int):
+        specs = [specs, ]
+    ret = []
+    for i in atomicnum:
+        ret.append(str(df[df['AtomicNumber']==i]['Symbol'].iloc[0]))
+    return ret
+
+def move_spectra(d, pureE, trueE, spectra, outfile):
+    spectra_ = np.loadtxt(f"project/{d['projname']}/{spectra}")
+    pureE_ = np.loadtxt(f"project/{d['projname']}/{pureE}")
+    trueE_ = np.loadtxt(f"project/{d['projname']}/{trueE}")
+    out_ = spectra_ + pureE_ - trueE_
+    np.savetxt(f"project/{d['projname']}/{outfile}", out_)

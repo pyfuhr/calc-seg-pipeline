@@ -206,11 +206,12 @@ pipeline_commands_example: # запускается pipeline
         relax_time: 1e7
         cool_time: 1e6
         outfile: "Ag_10nm_reord_relax.lmp"
-    minimize_polygpu:
+    minimize_polygpu: # после минимизации надо запустить make_orthognal, так как gpumd записывает неверные углы решетки (округление 0)
         infile: "Ag_10nm_reord.lmp"
         intype: "extxyz"
         potential: "Unep_v1.txt" 
         atomtypes: "not used"
         outfile: "out.xyz"
-
+    make_orthogonal:
+        infile: "Ag_10nm_min.xyz"
     #step 6: compite pairs

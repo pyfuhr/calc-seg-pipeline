@@ -14,7 +14,8 @@ def get_last_energy(d, path, en_file):
     df = pd.read_csv(fpath, sep=r'\s+', header=None, usecols=[0, 1, 2],names=['T', 'Ek', 'Ep'])
     energy = df['Ep'].iloc[-1]
     with open(f"project/{d['projname']}/{en_file}", 'w') as f:
-        f.write(str(int(energy)))
+        f.write(str(float(energy)))
+    return float(energy)
 
 def make_orthogonal(d, infile):
     with open(f"project/{d['projname']}/{infile}", 'r') as f:
@@ -28,7 +29,7 @@ def make_orthogonal(d, infile):
         f.write(data)
 
 def relax_polycrystal(d, infile, intype, potential, atomtypes, init_temp, start_temp, stop_temp, 
-                      end_temp, heat_time, relax_time, cool_time, elastic_mod, outfile):
+                      end_temp, heat_time, relax_time, cool_time, elastic_mod, outfile, tmp_name=False):
     'elastic modulus in GPa (for silver its 83)'
     create_meta(f'project/{d["projname"]}/{outfile}',
                     [f'project/{d["projname"]}/{infile}', ],
@@ -39,7 +40,11 @@ def relax_polycrystal(d, infile, intype, potential, atomtypes, init_temp, start_
     with open('scripts/thermal_an_gpumd', 'r') as fr:
         dfile = {}
         symbols = digits+ascii_lowercase
-        path = ''.join([choice(symbols) for i in range(10)])
+        if tmp_name:
+            path = tmp_name
+        else:
+            path = ''.join([choice(symbols) for i in range(10)])
+        if os.path.isdir(f"project/{d['projname']}/{path}"): shutil.rmtree(f"project/{d['projname']}/{path}")
         os.mkdir(f"project/{d['projname']}/{path}")
         with open(f"project/{d['projname']}/{path}/run.in", 'w') as fw:
             shutil.copyfile(f"potentials/{potential}", f"project/{d['projname']}/{path}/{potential}")
@@ -63,16 +68,17 @@ def relax_polycrystal(d, infile, intype, potential, atomtypes, init_temp, start_
     os.chdir('../../..')
     shutil.copyfile(f"project/{d['projname']}/{path}/dump.xyz", f"project/{d['projname']}/{outfile}")
 
-def minimize_polycrystal(d, infile, intype, potential, atomtypes, outfile, energy_file, min_vol=False, tmp_name=False):
+def minimize_polycrystal(d, infile, intype, potential, atomtypes, outfile, energy_file, minimize_vol=False, tmp_name=False):
     create_meta(f'project/{d["projname"]}/{outfile}',
                     [f'project/{d["projname"]}/{infile}', ],
                     f'Minimize polycrystal using lammps\nPotential: {potential}'
-                    f'Atomtypes: from exyz file\nEnergy stored to {energy_file}\nMinimize volume:{min_vol}')
+                    f'Atomtypes: from exyz file\nEnergy stored to {energy_file}\nMinimize volume:{minimize_vol}')
     symbols = digits+ascii_lowercase
     if tmp_name:
         path = tmp_name
     else:
         path = ''.join([choice(symbols) for i in range(10)])
+    if os.path.isdir(f"project/{d['projname']}/{path}"): shutil.rmtree(f"project/{d['projname']}/{path}")
     os.mkdir(f"project/{d['projname']}/{path}")
     shutil.copyfile(f"potentials/{potential}", f"project/{d['projname']}/{path}/{potential}")
     convert_format(d, infile, intype, f'{path}/model.xyz', 'extxyz')
@@ -80,7 +86,7 @@ def minimize_polycrystal(d, infile, intype, potential, atomtypes, outfile, energ
         with open(f"project/{d['projname']}/{path}/run.in", 'w') as fw:
             src = string.Template(fr.read())
             dfile = {'potential': f'{potential}'}
-            dfile['minvol'] = ('1' if min_vol else '')
+            dfile['minvol'] = ('1' if minimize_vol else '')
             fw.write(src.safe_substitute(dfile))
         os.chdir(f"project/{d['projname']}/{path}")
     print("New path:", path)

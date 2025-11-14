@@ -4,6 +4,7 @@ import ase.io
 import string
 from pipeline.utils import get_masses_from_specs
 from pipeline.metabuilder import create_meta
+import time, os
 
 def reorder_index(d, infile, outfile):
     create_meta(f'project/{d["projname"]}/{outfile}',
@@ -23,6 +24,9 @@ def convert_format2(d, infile, outfile):
     create_meta(f'project/{d["projname"]}/{outfile}',
                     [f'project/{d["projname"]}/{infile}', ],
                     f'Convert format via atomsk')
+    if os.path.isfile(f"project/{d['projname']}/{outfile}"):
+        os.remove(f"project/{d['projname']}/{outfile}")
+        time.sleep(2)
     cmd = ['atomsk', f"project/{d['projname']}/{infile}", f"project/{d['projname']}/{outfile}"]
     print("Run:", " ".join(cmd))
     p = Popen(cmd, stdout=PIPE, stderr=PIPE)

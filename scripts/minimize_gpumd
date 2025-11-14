@@ -2,7 +2,7 @@ potential $potential
 velocity 0.00001
 time_step 0
 
-minimize fire 0.001 10000 $minvol
+minimize fire 1e-5 200000 $minvol
 ensemble nve
 dump_thermo 1
 dump_exyz 1 0 1 1

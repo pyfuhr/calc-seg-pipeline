@@ -1,0 +1,10 @@
+potential $potential
+velocity 0.00001
+time_step 0
+
+minimize fire 1e-6 1000000 $minvol
+ensemble nve
+dump_thermo 1
+dump_exyz 1 0 1 1
+
+run 1

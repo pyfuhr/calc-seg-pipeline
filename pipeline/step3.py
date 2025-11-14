@@ -13,7 +13,7 @@ from pipeline.metabuilder import create_meta
 
 q_step3 = multiprocessing.Queue()
 
-def start_subcalc(id, system, cores, species, soap_cutoff, n_max, l_max, sigma, cnt) -> None:
+def start_subcalc(d, id, system, cores, species, soap_cutoff, n_max, l_max, sigma, cnt, outfile) -> None:
     soap = SOAP(
         species=species,
         periodic=True,
@@ -23,12 +23,10 @@ def start_subcalc(id, system, cores, species, soap_cutoff, n_max, l_max, sigma, 
         sigma=sigma
     )
     global q_step3
-    if id==0:
+    with open(f"project/{d['projname']}/{outfile}", 'w') as f:
         for i in tqdm(range(id, len(system), cores)):
-            q_step3.put((i, soap.create(system, centers=[i, ])[0]))
-    else:
-        for i in range(id, len(system), cores):
-            q_step3.put((i, soap.create(system, centers=[i, ])[0]))
+            data = soap.create(system, centers=[i, ])[0]
+            f.write(f'{i} {" ".join(map(str, data))}\n')
     cnt.value -= 1
 
 def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=False):
@@ -41,6 +39,8 @@ def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=
     data = pipeline.compute()
     system = ov.io.ase.ovito_to_ase(data)
     system.set_pbc([1,1,1])
+    if atomtypes == False:
+        atomtypes = d["specs"]
     atomnumbers = get_atomicnum_from_specs(atomtypes)
     system.set_atomic_numbers(np.ones(len(system))*int(atomnumbers[0]))
     species = atomnumbers
@@ -48,6 +48,10 @@ def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=
     global q
     cores = (cores if cores else d['cores'])
     cnt = multiprocessing.Value('d', 0)
+
+    start_subcalc(d, 0, system, 
+        1, species, soap_cutoff, n_max, l_max, sigma, cnt, outfile)
+    '''
     for i in range(cores):
         p = multiprocessing.Process(target=start_subcalc, args=(i, system, 
         cores, species, soap_cutoff, n_max, l_max, sigma, cnt))
@@ -57,13 +61,8 @@ def soap(d, infile, soap_cutoff, n_max, l_max, sigma, atomtypes, outfile, cores=
     
     while cnt.value > 0:
         sleep(1)
+    '''
         
-    with open(f"project/{d['projname']}/{outfile}", 'w') as f:
-        while not q_step3 .empty():
-            print('Entry left:', q_step3.qsize(), end='\r')
-            row = q_step3 .get()
-            f.write(f'{row[0]} {" ".join(map(str, row[1]))}\n')
-
 def get_gb_ids(d, infile, cutoff, outfile):
     create_meta(f'project/{d["projname"]}/{outfile}',
                     [f'project/{d["projname"]}/{infile}',],
@@ -89,6 +88,7 @@ def extract_pca(d, infile, pca_num, outfile):
                     f'PCA num: {pca_num}')
     soap = pd.read_csv(f"project/{d['projname']}/{infile}", sep=' ', header=None)
     soap = soap.set_index(0)
+    print(soap.shape)
     soap.sort_index(inplace=True)
     pca_x = PCA(n_components=pca_num, svd_solver="full")
     pca = pca_x.fit_transform(soap.iloc[:, 1:].values)
@@ -105,6 +105,7 @@ def select_points(d, infile, gb_file, points_num, outfile, random_state=42):
     xpca_all = pd.read_csv(f"project/{d['projname']}/{infile}", usecols=[1,2,3,4,5,6,7,8,9,10,11])
     xpca_all['idc'] = xpca_all['id'].copy()
     xpca_all.set_index('id',inplace=True)
+    print(len(ind), xpca_all.shape)
     xpca_gb = xpca_all.iloc[ind]
     print(xpca_gb)
     kmeans = KMeans(n_clusters=points_num, random_state=random_state)
